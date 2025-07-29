@@ -208,81 +208,108 @@ call insertar_empleado(8001, 'GOMEZ', 'ANALISTA', 7566, '1984-08-15', 220000.00,
 
 -- 3. Construya el procedimiento que recupere el nombre, número y número de personas a
 -- partir del número de departamento.
-drop procedure actualizar_salario;
+drop procedure if exists info_departamento;
+
 delimiter $$
-create procedure actualizar_salario(
-    in p_emp_no int,
-    in p_incremento decimal(10,2)
+create procedure info_departamento(
+    in p_dept_no int
 )
 begin
-    update emp
-    set salario = salario + p_incremento
-    where emp_no = p_emp_no;
+    select 
+        d.DNombre as nombre_departamento,
+        d.Dept_No as numero_departamento,
+        count(e.Emp_No) as numero_personas
+    from Dept d
+    left join Emp e on d.Dept_No = e.Dept_No
+    where d.Dept_No = p_dept_no
+    group by d.DNombre, d.Dept_No;
 end $$
 delimiter ;
 
-call actualizar_salario(8001, 50000.00);
-
+call info_departamento(10);
 
 -- 4. Diseñe y construya un procedimiento igual que el anterior, pero que recupere también las
 -- personas que trabajan en dicho departamento, pasándole como parámetro el nombres
+drop procedure if exists empleados_por_departamento;
+
 delimiter $$
-create procedure eliminar_empleado(
-    in p_emp_no int
+create procedure empleados_por_departamento(
+    in p_nombre_departamento varchar(50)
 )
 begin
-    delete from emp
-    where emp_no = p_emp_no;
+    select 
+        d.Dept_No as numero_departamento,
+        d.DNombre as nombre_departamento,
+        e.Apellido as nombre_empleado
+    from Dept d
+    inner join Emp e on d.Dept_No = e.Dept_No
+    where d.DNombre = p_nombre_departamento;
 end $$
 delimiter ;
 
-call eliminar_empleado(8001);
-
+call empleados_por_departamento('VENDEDOR');
 
 -- 5. Construya un procedimiento para devolver salario, oficio y comisión, pasándole el apellido.
+drop procedure if exists datos_empleado;
+
 delimiter $$
-create procedure empleados_mismo_oficio(
-    in p_emp_no int
+create procedure datos_empleado(
+    in p_apellido varchar(50)
 )
 begin
-    select * 
+    select 
+        salario,
+        oficio,
+        comision
     from emp
-    where oficio = (
-        select oficio 
-        from emp 
-        where emp_no = p_emp_no
-    );
+    where apellido = p_apellido;
 end $$
 delimiter ;
 
-call empleados_mismo_oficio(7499);
-
+call datos_empleado('ARROYO');
 
 -- 6. Tal como el ejercicio anterior, pero si no le pasamos ningún valor, mostrará los datos de
 -- todos los empleados.
+drop procedure if exists datos_empleado_opcional;
+
 delimiter $$
-create procedure contar_empleados_por_oficio()
+create procedure datos_empleado_opcional(
+    in p_apellido varchar(50)
+)
 begin
-    select oficio, count(*) as total_empleados
-    from emp
-    group by oficio
-    order by total_empleados desc;
+    if p_apellido is null then
+        select salario, oficio, comision
+        from emp;
+    else
+        select salario, oficio, comision
+        from emp
+        where apellido = p_apellido;
+    end if;
 end $$
 delimiter ;
 
-call contar_empleados_por_oficio();
-
+call datos_empleado_opcional('ARROYO');
+call datos_empleado_opcional(null);
 
 -- 7. Construya un procedimiento para mostrar el salario, oficio, apellido y nombre del
 -- departamento de todos los empleados que contengan en su apellido el valor que le
 -- pasemos como parámetro.
+drop procedure if exists empleados_por_apellido;
+
 delimiter $$
-create procedure salario_medio_por_oficio()
+create procedure empleados_por_apellido(
+    in p_fragmento_apellido varchar(50)
+)
 begin
-    select oficio, avg(salario) as salario_medio
-    from emp
-    group by oficio;
+    select 
+        e.salario,
+        e.oficio,
+        e.apellido,
+        d.dnombre as nombre_departamento
+    from emp e
+    inner join dept d on e.dept_no = d.dept_no
+    where e.apellido like concat('%', p_fragmento_apellido, '%');
 end $$
 delimiter ;
 
-call salario_medio_por_oficio();
+call empleados_por_apellido('NE');
